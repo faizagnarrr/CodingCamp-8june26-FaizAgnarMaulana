@@ -1,0 +1,526 @@
+/* ============================================
+   Expense & Budget Visualizer - Stylesheet
+   Mobile-First Responsive Design
+   ============================================ */
+
+/* ============================================
+   1. CSS Reset & Base Styles
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ============================================
+   2. Typography
+   ============================================ */
+
+h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #34495e;
+}
+
+p, label {
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+body {
+    font-size: 0.875rem;
+}
+
+/* Ensure minimum 14px for body text as per requirement 11.1 */
+body, input, select, button, textarea {
+    font-size: max(0.875rem, 14px);
+}
+
+/* ============================================
+   3. Layout Structure
+   ============================================ */
+
+.container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    padding: 1rem 0;
+    border-bottom: 2px solid #e74c3c;
+    margin-bottom: 1.5rem;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+footer {
+    text-align: center;
+    padding: 1rem 0;
+    margin-top: 2rem;
+    border-top: 1px solid #bdc3c7;
+    color: #7f8c8d;
+    font-size: 0.75rem;
+}
+
+/* ============================================
+   4. Section Styling
+   ============================================ */
+
+section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+section h2 {
+    margin-bottom: 1rem;
+}
+
+/* Whitespace separation between sections (Requirement 11.3) */
+.balance-section {
+    order: 1;
+}
+
+.form-section {
+    order: 2;
+}
+
+.transaction-section {
+    order: 3;
+}
+
+.chart-section {
+    order: 4;
+}
+
+/* ============================================
+   5. Balance Display
+   ============================================ */
+
+#balance-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+#balance-display h2 {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.balance-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   6. Form Styling
+   ============================================ */
+
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #34495e;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    padding: 0.75rem;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    font-size: max(0.875rem, 14px);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder {
+    color: #95a5a6;
+}
+
+/* ============================================
+   7. Button Styling
+   ============================================ */
+
+button {
+    padding: 0.75rem 1.5rem;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: max(0.875rem, 14px);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    /* Minimum 44x44 pixels for touch targets (Requirement 11.4) */
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+button:hover {
+    background-color: #229954;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+.submit-btn {
+    width: 100%;
+}
+
+.delete-btn {
+    background-color: #e74c3c;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    width: auto;
+    min-width: 44px;
+}
+
+.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+/* ============================================
+   8. Error Message Styling
+   ============================================ */
+
+.error-message {
+    padding: 0.75rem;
+    background-color: #fadbd8;
+    color: #c0392b;
+    border: 1px solid #f5b7b1;
+    border-radius: 4px;
+    margin-top: 1rem;
+    font-size: max(0.875rem, 14px);
+}
+
+.error-hidden {
+    display: none;
+}
+
+/* ============================================
+   9. Transaction List Styling
+   ============================================ */
+
+#transaction-list-container {
+    position: relative;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ecf0f1;
+    border-radius: 4px;
+}
+
+#transaction-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.transaction-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #ecf0f1;
+    font-size: max(0.875rem, 14px);
+}
+
+.transaction-item:last-child {
+    border-bottom: none;
+}
+
+.transaction-name {
+    font-weight: 500;
+    color: #2c3e50;
+    word-break: break-word;
+}
+
+.transaction-amount {
+    text-align: right;
+    color: #e74c3c;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-category {
+    padding: 0.25rem 0.75rem;
+    background-color: #ecf0f1;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    color: #34495e;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* Category badge colors */
+.transaction-category.food {
+    background-color: #ffeaa7;
+    color: #d63031;
+}
+
+.transaction-category.transport {
+    background-color: #a29bfe;
+    color: #2d3436;
+}
+
+.transaction-category.fun {
+    background-color: #81ecec;
+    color: #2d3436;
+}
+
+/* ============================================
+   10. Empty State Styling
+   ============================================ */
+
+.empty-state-message {
+    padding: 2rem;
+    text-align: center;
+    color: #95a5a6;
+    font-size: max(0.875rem, 14px);
+}
+
+.chart-message {
+    padding: 2rem;
+    text-align: center;
+    color: #95a5a6;
+    font-size: max(0.875rem, 14px);
+}
+
+.hidden {
+    display: none;
+}
+
+/* ============================================
+   11. Chart Component
+   ============================================ */
+
+#chart-component {
+    position: relative;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#spending-chart {
+    max-width: 100%;
+    height: auto;
+}
+
+.chart-error {
+    color: #e74c3c;
+}
+
+/* ============================================
+   12. Responsive Design - Mobile First (320px+)
+   ============================================ */
+
+/* Base mobile styles already applied above */
+
+/* ============================================
+   13. Responsive Design - Tablet (768px+)
+   ============================================ */
+
+@media (min-width: 768px) {
+    .container {
+        padding: 2rem;
+    }
+
+    main {
+        gap: 2.5rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .balance-section {
+        order: 1;
+        flex: 1 1 100%;
+    }
+
+    .form-section {
+        order: 2;
+        flex: 1 1 calc(50% - 1.25rem);
+    }
+
+    .transaction-section {
+        order: 3;
+        flex: 1 1 calc(50% - 1.25rem);
+    }
+
+    .chart-section {
+        order: 4;
+        flex: 1 1 100%;
+    }
+
+    section {
+        padding: 2rem;
+    }
+
+    h1 {
+        font-size: 2.25rem;
+    }
+
+    h2 {
+        font-size: 1.75rem;
+    }
+
+    .balance-value {
+        font-size: 3rem;
+    }
+
+    .transaction-item {
+        grid-template-columns: 2fr 1fr 1fr auto;
+    }
+
+    #transaction-list-container {
+        max-height: 500px;
+    }
+}
+
+/* ============================================
+   14. Responsive Design - Desktop (1200px+)
+   ============================================ */
+
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1400px;
+        padding: 2.5rem;
+    }
+
+    main {
+        gap: 3rem;
+    }
+
+    .form-section {
+        flex: 0 1 350px;
+    }
+
+    .transaction-section {
+        flex: 1 1 auto;
+        min-width: 400px;
+    }
+
+    .chart-section {
+        flex: 1 1 auto;
+        min-width: 400px;
+    }
+
+    #transaction-list-container {
+        max-height: 600px;
+    }
+}
+
+/* ============================================
+   15. Print Styles
+   ============================================ */
+
+@media print {
+    body {
+        background: white;
+    }
+
+    section {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        page-break-inside: avoid;
+    }
+
+    button {
+        display: none;
+    }
+}
+
+/* ============================================
+   16. Accessibility & Focus States
+   ============================================ */
+
+:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+    body {
+        color: #000;
+    }
+
+    section {
+        border: 2px solid #000;
+    }
+
+    button {
+        border: 2px solid #000;
+    }
+
+    input, select {
+        border: 2px solid #000;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
