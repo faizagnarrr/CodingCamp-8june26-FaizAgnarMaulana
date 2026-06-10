@@ -9,6 +9,9 @@
 
 const APP_STATE = {
     transactions: [],
+    customCategories: [],
+    currentTheme: 'light',
+    currentSortOption: 'chronological',
     storageAvailable: true,
     isLoading: false,
     errorMessage: null,
@@ -16,6 +19,9 @@ const APP_STATE = {
 
 const CONFIG = {
     STORAGE_KEY: 'expenses_transactions',
+    STORAGE_KEY_CATEGORIES: 'expense_categories',
+    STORAGE_KEY_SORT_PREFERENCE: 'transaction_sort_preference',
+    STORAGE_KEY_THEME_PREFERENCE: 'theme_preference',
     CATEGORIES: ['Food', 'Transport', 'Fun'],
     AMOUNT_MIN: 0.01,
     AMOUNT_MAX: 999999.99,
@@ -108,7 +114,172 @@ function getCategoryClass(category) {
 }
 
 // ============================================
-// 3. Validation Engine
+// 3. Category Manager
+// ============================================
+
+const CategoryManager = {
+    /**
+     * Initialize CategoryManager on app startup
+     * Load custom categories from storage and update APP_STATE
+     */
+    initialize() {
+        const savedCategories = StorageManager.loadCustomCategories();
+        APP_STATE.customCategories = Array.isArray(savedCategories) ? savedCategories : [];
+    },
+
+    /**
+     * Get all categories (default + custom)
+     * @returns {array} Array of all category names
+     */
+    getAllCategories() {
+        return [
+            ...CONFIG.CATEGORIES,
+            ...APP_STATE.customCategories
+        ];
+    },
+
+    /**
+     * Get all custom categories
+     * @returns {array} Array of custom category names
+     */
+    getCustomCategories() {
+        return [...APP_STATE.customCategories];
+    },
+
+    /**
+     * Check if a category is a custom category
+     * @param {string} categoryName - Category name to check
+     * @returns {boolean} True if category is custom
+     */
+    isCustomCategory(categoryName) {
+        if (!categoryName || typeof categoryName !== 'string') {
+            return false;
+        }
+        return APP_STATE.customCategories.includes(categoryName);
+    },
+
+    /**
+     * Add a new custom category
+     * @param {string} categoryName - Name of the category to add
+     * @returns {object} {success: boolean, error?: string}
+     */
+    addCustomCategory(categoryName) {
+        // Validate input
+        if (!categoryName || typeof categoryName !== 'string') {
+            return { success: false, error: 'Category name is required' };
+        }
+
+        const trimmed = categoryName.trim();
+
+        // Check not empty
+        if (trimmed.length === 0) {
+            return { success: false, error: 'Category name cannot be empty' };
+        }
+
+        // Check max 50 characters
+        if (trimmed.length > 50) {
+            return { success: false, error: 'Category name must not exceed 50 characters' };
+        }
+
+        // Check not duplicate (case-insensitive)
+        const lowerTrimmed = trimmed.toLowerCase();
+        const allCategories = this.getAllCategories();
+        const isDuplicate = allCategories.some(cat => cat.toLowerCase() === lowerTrimmed);
+        
+        if (isDuplicate) {
+            return { success: false, error: 'This category already exists' };
+        }
+
+        // Check not a default category
+        const isDefault = CONFIG.CATEGORIES.some(cat => cat.toLowerCase() === lowerTrimmed);
+        if (isDefault) {
+            return { success: false, error: 'Cannot add default category as custom category' };
+        }
+
+        // Add to custom categories
+        APP_STATE.customCategories.push(trimmed);
+
+        // Save to storage
+        const saved = StorageManager.saveCustomCategories(APP_STATE.customCategories);
+        if (!saved) {
+            // Remove from state if save failed
+            APP_STATE.customCategories = APP_STATE.customCategories.filter(cat => cat !== trimmed);
+            return { success: false, error: 'Failed to save category. Please try again.' };
+        }
+
+        return { success: true };
+    },
+
+    /**
+     * Delete a custom category
+     * @param {string} categoryName - Name of the category to delete
+     * @returns {object} {success: boolean, error?: string}
+     */
+    deleteCustomCategory(categoryName) {
+        if (!categoryName || typeof categoryName !== 'string') {
+            return { success: false, error: 'Category name is required' };
+        }
+
+        // Check if category is custom
+        if (!this.isCustomCategory(categoryName)) {
+            return { success: false, error: 'Cannot delete default category' };
+        }
+
+        // Check usage count
+        const usageCount = this.getCategoryUsageCount(categoryName);
+        if (usageCount > 0) {
+            return { 
+                success: false, 
+                error: `Cannot delete category. ${usageCount} transaction${usageCount > 1 ? 's' : ''} use${usageCount > 1 ? '' : 's'} this category.` 
+            };
+        }
+
+        // Remove from custom categories
+        APP_STATE.customCategories = APP_STATE.customCategories.filter(cat => cat !== categoryName);
+
+        // Save to storage
+        const saved = StorageManager.saveCustomCategories(APP_STATE.customCategories);
+        if (!saved) {
+            // Add back to state if save failed
+            APP_STATE.customCategories.push(categoryName);
+            return { success: false, error: 'Failed to delete category. Please try again.' };
+        }
+
+        return { success: true };
+    },
+
+    /**
+     * Get how many transactions use a specific category
+     * @param {string} categoryName - Category name to check
+     * @returns {number} Count of transactions using this category
+     */
+    getCategoryUsageCount(categoryName) {
+        if (!categoryName || typeof categoryName !== 'string') {
+            return 0;
+        }
+
+        return APP_STATE.transactions.filter(t => t.category === categoryName).length;
+    },
+
+    /**
+     * Load custom categories from storage
+     * @returns {array} Array of custom categories from storage
+     */
+    loadCustomCategories() {
+        return StorageManager.loadCustomCategories();
+    },
+
+    /**
+     * Save custom categories to storage
+     * @returns {boolean} True if save was successful
+     */
+    saveCustomCategories() {
+        return StorageManager.saveCustomCategories(APP_STATE.customCategories);
+    },
+};
+
+// ============================================
+// 4. Validation Engine
 // ============================================
 
 const ValidationEngine = {
@@ -177,8 +348,44 @@ const ValidationEngine = {
             return { isValid: false, error: 'Please select a category' };
         }
 
-        if (!CONFIG.CATEGORIES.includes(category)) {
+        const allCategories = CategoryManager.getAllCategories();
+        if (!allCategories.includes(category)) {
             return { isValid: false, error: 'Invalid category selected' };
+        }
+
+        return { isValid: true, error: null };
+    },
+
+    /**
+     * Validate custom category name
+     * @param {string} categoryName - The category name to validate
+     * @param {array} existingCategories - Array of existing category names (default + custom)
+     * @returns {object} {isValid: boolean, error: string}
+     */
+    validateCategoryName(categoryName, existingCategories = []) {
+        if (!categoryName || typeof categoryName !== 'string') {
+            return { isValid: false, error: 'Category name is required' };
+        }
+
+        const trimmed = categoryName.trim();
+        if (trimmed.length === 0) {
+            return { isValid: false, error: 'Category name cannot be empty' };
+        }
+
+        if (trimmed.length > 50) {
+            return { isValid: false, error: 'Category name must not exceed 50 characters' };
+        }
+
+        // Check for default categories
+        if (CONFIG.CATEGORIES.includes(trimmed)) {
+            return { isValid: false, error: 'This is a default category and cannot be added as custom' };
+        }
+
+        // Check for duplicates (case-insensitive)
+        const lowerTrimmed = trimmed.toLowerCase();
+        const isDuplicate = existingCategories.some(cat => cat.toLowerCase() === lowerTrimmed);
+        if (isDuplicate) {
+            return { isValid: false, error: 'This category already exists' };
         }
 
         return { isValid: true, error: null };
@@ -212,7 +419,80 @@ const ValidationEngine = {
 };
 
 // ============================================
-// 4. Storage Manager
+// 3.5. Theme Manager
+// ============================================
+
+const ThemeManager = {
+    /**
+     * Initialize theme on app startup
+     * Loads saved theme preference and applies it
+     */
+    initialize() {
+        const savedTheme = this.loadThemePreference();
+        APP_STATE.currentTheme = savedTheme;
+        this.applyTheme(savedTheme);
+    },
+
+    /**
+     * Toggle between light and dark themes
+     */
+    toggleTheme() {
+        const newTheme = APP_STATE.currentTheme === 'light' ? 'dark' : 'light';
+        this.applyTheme(newTheme);
+    },
+
+    /**
+     * Apply a specific theme
+     * @param {string} themeName - 'light' or 'dark'
+     */
+    applyTheme(themeName) {
+        if (themeName !== 'light' && themeName !== 'dark') {
+            console.warn(`Invalid theme: ${themeName}, defaulting to light`);
+            themeName = 'light';
+        }
+
+        APP_STATE.currentTheme = themeName;
+
+        // Apply CSS class to body
+        if (themeName === 'dark') {
+            document.body.classList.add('theme-dark');
+        } else {
+            document.body.classList.remove('theme-dark');
+        }
+
+        // Save preference
+        this.saveThemePreference(themeName);
+    },
+
+    /**
+     * Get current theme
+     * @returns {string} Current theme ('light' or 'dark')
+     */
+    getCurrentTheme() {
+        return APP_STATE.currentTheme;
+    },
+
+    /**
+     * Load theme preference from storage
+     * @returns {string} Saved theme preference, or 'light' as default
+     */
+    loadThemePreference() {
+        const saved = StorageManager.loadThemePreference();
+        return saved || 'light';
+    },
+
+    /**
+     * Save theme preference to storage
+     * @param {string} theme - Theme to save ('light' or 'dark')
+     * @returns {boolean} True if save was successful
+     */
+    saveThemePreference(theme) {
+        return StorageManager.saveThemePreference(theme);
+    },
+};
+
+// ============================================
+// 5. Storage Manager
 // ============================================
 
 const StorageManager = {
@@ -309,10 +589,250 @@ const StorageManager = {
             return false;
         }
     },
+
+    /**
+     * Save sort preference to Local Storage
+     * @param {string} sortOption - The sort option to save (e.g., 'chronological', 'amount-asc', 'amount-desc', 'category')
+     * @returns {boolean} True if save was successful
+     */
+    saveSortPreference(sortOption) {
+        if (!APP_STATE.storageAvailable) {
+            return false;
+        }
+
+        try {
+            localStorage.setItem(CONFIG.STORAGE_KEY_SORT_PREFERENCE, sortOption);
+            return true;
+        } catch (error) {
+            if (error.name === 'QuotaExceededError') {
+                showError('Storage limit exceeded. Cannot save sort preference.');
+                return false;
+            }
+            console.error('Error saving sort preference to storage:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Load sort preference from Local Storage
+     * @returns {string} The saved sort preference, or 'chronological' as default
+     */
+    loadSortPreference() {
+        if (!APP_STATE.storageAvailable) {
+            return 'chronological';
+        }
+
+        try {
+            const data = localStorage.getItem(CONFIG.STORAGE_KEY_SORT_PREFERENCE);
+            
+            // Return saved preference if it exists, otherwise return default
+            if (data && typeof data === 'string') {
+                return data;
+            }
+            
+            return 'chronological';
+        } catch (error) {
+            console.error('Error loading sort preference from storage:', error);
+            return 'chronological';
+        }
+    },
+
+    /**
+     * Save theme preference to Local Storage
+     * @param {string} theme - The theme to save (e.g., 'light', 'dark')
+     * @returns {boolean} True if save was successful
+     */
+    saveThemePreference(theme) {
+        if (!APP_STATE.storageAvailable) {
+            return false;
+        }
+
+        try {
+            localStorage.setItem(CONFIG.STORAGE_KEY_THEME_PREFERENCE, theme);
+            return true;
+        } catch (error) {
+            if (error.name === 'QuotaExceededError') {
+                showError('Storage limit exceeded. Cannot save theme preference.');
+                return false;
+            }
+            console.error('Error saving theme preference to storage:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Load theme preference from Local Storage
+     * @returns {string} The saved theme preference, or 'light' as default
+     */
+    loadThemePreference() {
+        if (!APP_STATE.storageAvailable) {
+            return 'light';
+        }
+
+        try {
+            const data = localStorage.getItem(CONFIG.STORAGE_KEY_THEME_PREFERENCE);
+            
+            // Return saved preference if it exists, otherwise return default
+            if (data && (data === 'light' || data === 'dark')) {
+                return data;
+            }
+            
+            return 'light';
+        } catch (error) {
+            console.error('Error loading theme preference from storage:', error);
+            return 'light';
+        }
+    },
+
+    /**
+     * Save custom categories to Local Storage
+     * @param {array} categories - Array of custom category names to save
+     * @returns {boolean} True if save was successful
+     */
+    saveCustomCategories(categories) {
+        if (!APP_STATE.storageAvailable) {
+            return false;
+        }
+
+        try {
+            const data = JSON.stringify(categories);
+            localStorage.setItem(CONFIG.STORAGE_KEY_CATEGORIES, data);
+            return true;
+        } catch (error) {
+            if (error.name === 'QuotaExceededError') {
+                showError('Storage limit exceeded. Cannot save categories.');
+                return false;
+            }
+            console.error('Error saving custom categories to storage:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Load custom categories from Local Storage
+     * @returns {array} Array of custom category names, or empty array if none exist
+     */
+    loadCustomCategories() {
+        if (!APP_STATE.storageAvailable) {
+            return [];
+        }
+
+        try {
+            const data = localStorage.getItem(CONFIG.STORAGE_KEY_CATEGORIES);
+            
+            if (!data) {
+                return [];
+            }
+
+            const parsed = JSON.parse(data);
+
+            if (!Array.isArray(parsed)) {
+                console.warn('Storage data for categories is not an array, initializing empty');
+                return [];
+            }
+
+            return parsed;
+        } catch (error) {
+            console.error('Error loading custom categories from storage:', error);
+            return [];
+        }
+    },
 };
 
 // ============================================
-// 5. Transaction Manager
+// 5. Sort Manager
+// ============================================
+
+const SortManager = {
+    /**
+     * Initialize sort preference on app startup
+     * Loads the saved sort preference from storage
+     */
+    initialize() {
+        const savedPreference = this.loadSortPreference();
+        APP_STATE.currentSortOption = savedPreference;
+    },
+
+    /**
+     * Apply a sort option
+     * @param {string} option - The sort option ('chronological', 'amount-asc', 'amount-desc', 'category')
+     */
+    setSortOption(option) {
+        const validOptions = ['chronological', 'amount-asc', 'amount-desc', 'category'];
+        
+        if (!validOptions.includes(option)) {
+            console.warn(`Invalid sort option: ${option}. Using chronological instead.`);
+            APP_STATE.currentSortOption = 'chronological';
+            return;
+        }
+        
+        APP_STATE.currentSortOption = option;
+    },
+
+    /**
+     * Get current sort option
+     * @returns {string} Current sort option
+     */
+    getSortOption() {
+        return APP_STATE.currentSortOption;
+    },
+
+    /**
+     * Get transactions in sorted order
+     * Sorts transactions in-memory without modifying storage
+     * @param {array} transactions - Array of transactions to sort
+     * @returns {array} Sorted array of transactions (new array, original unchanged)
+     */
+    getDisplayTransactions(transactions) {
+        // Create a copy to avoid modifying the original array
+        const sorted = [...transactions];
+        const option = this.getSortOption();
+
+        if (option === 'chronological') {
+            // Sort by timestamp newest first (descending)
+            sorted.sort((a, b) => b.timestamp - a.timestamp);
+        } else if (option === 'amount-asc') {
+            // Sort by amount ascending (lowest first)
+            sorted.sort((a, b) => a.amount - b.amount);
+        } else if (option === 'amount-desc') {
+            // Sort by amount descending (highest first)
+            sorted.sort((a, b) => b.amount - a.amount);
+        } else if (option === 'category') {
+            // Sort by category alphabetically, then by amount descending within each category
+            sorted.sort((a, b) => {
+                // First sort by category alphabetically
+                const categoryCompare = a.category.localeCompare(b.category, undefined, { sensitivity: 'base' });
+                if (categoryCompare !== 0) {
+                    return categoryCompare;
+                }
+                // If categories are the same, sort by amount descending
+                return b.amount - a.amount;
+            });
+        }
+
+        return sorted;
+    },
+
+    /**
+     * Load sort preference from Local Storage
+     * @returns {string} The saved sort preference, or 'chronological' as default
+     */
+    loadSortPreference() {
+        return StorageManager.loadSortPreference();
+    },
+
+    /**
+     * Save sort preference to Local Storage
+     * @param {string} option - The sort option to save
+     * @returns {boolean} True if save was successful
+     */
+    saveSortPreference(option) {
+        return StorageManager.saveSortPreference(option);
+    },
+};
+
+// ============================================
+// 6. Transaction Manager
 // ============================================
 
 const TransactionManager = {
@@ -413,7 +933,7 @@ const TransactionManager = {
 };
 
 // ============================================
-// 6. UI Rendering Functions
+// 7. UI Rendering Functions
 // ============================================
 
 /**
@@ -446,16 +966,20 @@ function updateBalanceDisplay() {
  */
 function renderTransactionList() {
     const transactions = TransactionManager.getAll();
+    
+    // Get sorted transactions from SortManager
+    const displayTransactions = SortManager.getDisplayTransactions(transactions);
+    
     DOM_ELEMENTS.transactionList.innerHTML = '';
 
-    if (transactions.length === 0) {
+    if (displayTransactions.length === 0) {
         DOM_ELEMENTS.emptyStateMessage.style.display = 'block';
         return;
     }
 
     DOM_ELEMENTS.emptyStateMessage.style.display = 'none';
 
-    transactions.forEach(transaction => {
+    displayTransactions.forEach(transaction => {
         const item = document.createElement('div');
         item.className = 'transaction-item';
         item.dataset.transactionId = transaction.id;
@@ -597,7 +1121,7 @@ function updateAllUI() {
 }
 
 // ============================================
-// 7. Event Notifications
+// 8. Event Notifications
 // ============================================
 
 /**
@@ -700,6 +1224,9 @@ function initializeApp() {
 
     // Load transactions from storage
     APP_STATE.transactions = StorageManager.loadAll();
+
+    // Initialize SortManager
+    SortManager.initialize();
 
     // Attach event listeners
     DOM_ELEMENTS.form.addEventListener('submit', handleFormSubmit);
